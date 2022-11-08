@@ -162,8 +162,14 @@ class FrozenCLIPEmbedder(AbstractEncoder):
         self.transformer = CLIPTextModel.from_pretrained(version)
         self.device = device
         self.max_length = max_length
+        self.transformer.text_model.embeddings.forward = self.embedding_forward.__get__(self.transformer.text_model.embeddings)
+        self.transformer.text_model.encoder.forward = self.encoder_forward.__get__(self.transformer.text_model.encoder)
+        self.transformer.text_model.forward = self.text_encoder_forward.__get__(self.transformer.text_model)
+        self.transformer.forward = self.transformer_forward.__get__(self.transformer)
+        print('\n\n FrozenCLIPEmbedder')
+        print('\n\n')
 
-        def embedding_forward(
+    def embedding_forward(
                 self,
                 input_ids = None,
                 position_ids = None,
@@ -171,26 +177,25 @@ class FrozenCLIPEmbedder(AbstractEncoder):
                 embedding_manager = None,
             ) -> torch.Tensor:
 
-                seq_length = input_ids.shape[-1] if input_ids is not None else inputs_embeds.shape[-2]
+            seq_length = input_ids.shape[-1] if input_ids is not None else inputs_embeds.shape[-2]
 
-                if position_ids is None:
-                    position_ids = self.position_ids[:, :seq_length]
+            if position_ids is None:
+                position_ids = self.position_ids[:, :seq_length]
 
-                if inputs_embeds is None:
-                    inputs_embeds = self.token_embedding(input_ids)
+            if inputs_embeds is None:
+                inputs_embeds = self.token_embedding(input_ids)
 
-                if embedding_manager is not None:
-                    inputs_embeds = embedding_manager(input_ids, inputs_embeds)
+            if embedding_manager is not None:
+                inputs_embeds = embedding_manager(input_ids, inputs_embeds)
 
 
-                position_embeddings = self.position_embedding(position_ids)
-                embeddings = inputs_embeds + position_embeddings
+            position_embeddings = self.position_embedding(position_ids)
+            embeddings = inputs_embeds + position_embeddings
                 
-                return embeddings      
+            return embeddings      
 
-        self.transformer.text_model.embeddings.forward = embedding_forward.__get__(self.transformer.text_model.embeddings)
 
-        def encoder_forward(
+    def encoder_forward(
             self,
             inputs_embeds,
             attention_mask = None,
@@ -230,10 +235,9 @@ class FrozenCLIPEmbedder(AbstractEncoder):
 
             return hidden_states
 
-        self.transformer.text_model.encoder.forward = encoder_forward.__get__(self.transformer.text_model.encoder)
 
 
-        def text_encoder_forward(
+    def text_encoder_forward(
             self,
             input_ids = None,
             attention_mask = None,
@@ -282,9 +286,8 @@ class FrozenCLIPEmbedder(AbstractEncoder):
 
             return last_hidden_state
 
-        self.transformer.text_model.forward = text_encoder_forward.__get__(self.transformer.text_model)
 
-        def transformer_forward(
+    def transformer_forward(
             self,
             input_ids = None,
             attention_mask = None,
@@ -304,7 +307,6 @@ class FrozenCLIPEmbedder(AbstractEncoder):
                 embedding_manager = embedding_manager
             )
 
-        self.transformer.forward = transformer_forward.__get__(self.transformer)
 
 
     def freeze(self):

@@ -175,7 +175,7 @@ class PersonalizedBase(Dataset):
             assert self.num_images < len(per_img_token_list), f"Can't use per-image tokens when the training set contains more than {len(per_img_token_list)} tokens. To enable larger sets, add more tokens to 'per_img_token_list'."
 
         if set == "train":
-            self._length = self.num_images * repeats
+            self._length = self.num_images
 
         self.size = size
         self.interpolation = {"linear": PIL.Image.LINEAR,
@@ -194,9 +194,9 @@ class PersonalizedBase(Dataset):
         
         image = Image.open(os.path.join(self.images_path,self.ann['images'][i]['file_name']))
         image_id = self.ann['images'][i]['id']
-        image = np.array(image)
         if not image.mode == "RGB":
             image = image.convert("RGB")
+        image = np.array(image)
         image_h, image_w = image.shape[:2]
         for bbox_ann in self.ann['annotations']:
             if bbox_ann['image_id'] == image_id:

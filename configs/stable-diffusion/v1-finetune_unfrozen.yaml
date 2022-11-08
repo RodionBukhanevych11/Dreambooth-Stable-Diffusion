@@ -33,7 +33,7 @@ model:
     unet_config:
       target: ldm.modules.diffusionmodules.openaimodel.UNetModel
       params:
-        image_size: 32 # unused
+        image_size: 256 # unused
         in_channels: 4
         out_channels: 4
         model_channels: 320
@@ -55,7 +55,7 @@ model:
         ddconfig:
           double_z: true
           z_channels: 4
-          resolution: 32
+          resolution: 256
           in_channels: 3
           out_ch: 3
           ch: 128
@@ -71,7 +71,7 @@ model:
           target: torch.nn.Identity
 
     cond_stage_config:
-      target: ldm.modules.encoders.modules.FrozenCLIPEmbedder
+      target: ldm.modules.encoders.modules.FrozenCLIPTextEmbedder
 
 data:
   target: main.DataModuleFromConfig
@@ -84,7 +84,7 @@ data:
       params:
         data_root: /home/rodion/dataset_fire_detection/images
         reg: true
-        size: 32
+        size: 256
         set: train
         per_image_tokens: false
         repeats: 100
@@ -92,7 +92,7 @@ data:
       target: ldm.data.personalized.PersonalizedBase
       params:
         data_root: /home/rodion/dataset_fire_detection/images
-        size: 32
+        size: 256
         set: val
         per_image_tokens: false
         repeats: 10
@@ -100,7 +100,7 @@ data:
     reg:
       target: ldm.data.personalized.PersonalizedBase
       params:
-        size: 32
+        size: 256
         set: train
         reg: true
         per_image_tokens: false
