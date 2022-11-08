@@ -4,7 +4,7 @@ import PIL
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
-
+import os, cv2, json
 import random
 
 training_templates_smallest = [
@@ -146,15 +146,21 @@ class PersonalizedBase(Dataset):
                  center_crop=False,
                  mixing_prob=0.25,
                  coarse_class_text=None,
-                 reg = False
+                 reg = True
                  ):
 
-        self.data_root = data_root
-
-        self.image_paths = [os.path.join(self.data_root, file_path) for file_path in os.listdir(self.data_root)]
+        if set == 'train':
+            self.ann_path = '/home/eg/rodion/dataset_fire_detection/ann/fire/train.json'
+            self.images_path = '/home/eg/rodion/dataset_fire_detection/images'
+        else:
+            self.ann_path = '/home/eg/rodion/dataset_fire_detection/ann/fire/val.json'
+            self.images_path = '/home/eg/rodion/dataset_fire_detection/images'
+            
+        with open(self.ann_path) as f:
+            self.ann = json.load(f)
 
         # self._length = len(self.image_paths)
-        self.num_images = len(self.image_paths)
+        self.num_images = len(self.ann['images'])
         self._length = self.num_images 
 
         self.placeholder_token = placeholder_token
@@ -185,11 +191,40 @@ class PersonalizedBase(Dataset):
 
     def __getitem__(self, i):
         example = {}
-        image = Image.open(self.image_paths[i % self.num_images])
-
+        
+        image = Image.open(os.path.join(self.images_path,self.ann['images'][i]['file_name']))
+        image_id = self.ann['images'][i]['id']
+        image = np.array(image)
         if not image.mode == "RGB":
             image = image.convert("RGB")
-
+        image_h, image_w = image.shape[:2]
+        for bbox_ann in self.ann['annotations']:
+            if bbox_ann['image_id'] == image_id:
+                bbox = bbox_ann['bbox']
+                bbox[3] = bbox[1]+bbox[3]
+                bbox[2] = bbox[0]+bbox[2]
+                try:
+                    bbox[0] -= image_w / (bbox[2] - bbox[0]) * (bbox[2] - bbox[0])
+                    bbox[0] = max(0,bbox[0])
+                except:
+                    ...
+                try:
+                    bbox[1] -= image_h / (bbox[3] - bbox[1]) * (bbox[3] - bbox[1])
+                    bbox[1] = max(0,bbox[1])
+                except:
+                    ...
+                try:
+                    bbox[2] += image_w / (bbox[2] - bbox[0]) * (bbox[2] - bbox[0])
+                    bbox[2] = min(image_w,bbox[2])
+                except:
+                    ...
+                try:
+                    bbox[3] += image_h / (bbox[3] - bbox[1]) * (bbox[3] - bbox[1])
+                    bbox[3] = min(image_h,bbox[3])
+                except:
+                    ...
+                break   
+        
         placeholder_string = self.placeholder_token
         if self.coarse_class_text:
             placeholder_string = f"{self.coarse_class_text} {placeholder_string}"
@@ -199,22 +234,19 @@ class PersonalizedBase(Dataset):
         else:
             text = random.choice(reg_templates_smallest).format(placeholder_string)
             
+            
+        print("\n\nTEXT = ",text)
+        print("\n\n")
         example["caption"] = text
 
         # default to score-sde preprocessing
         img = np.array(image).astype(np.uint8)
+        img = img[bbox[1]:bbox[3],bbox[0]:bbox[2]]
         
-        if self.center_crop:
-            crop = min(img.shape[0], img.shape[1])
-            h, w, = img.shape[0], img.shape[1]
-            img = img[(h - crop) // 2:(h + crop) // 2,
-                (w - crop) // 2:(w + crop) // 2]
-
         image = Image.fromarray(img)
         if self.size is not None:
             image = image.resize((self.size, self.size), resample=self.interpolation)
 
-        image = self.flip(image)
         image = np.array(image).astype(np.uint8)
         example["image"] = (image / 127.5 - 1.0).astype(np.float32)
         return example

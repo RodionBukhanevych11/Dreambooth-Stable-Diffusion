@@ -105,13 +105,13 @@ def main():
     parser.add_argument(
         "--H",
         type=int,
-        default=512,
+        default=256,
         help="image height, in pixel space",
     )
     parser.add_argument(
         "--W",
         type=int,
-        default=512,
+        default=256,
         help="image width, in pixel space",
     )
     parser.add_argument(

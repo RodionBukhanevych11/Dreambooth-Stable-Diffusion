@@ -153,7 +153,6 @@ def get_parser(**parser_kwargs):
 
     parser.add_argument("--data_root", 
         type=str, 
-        required=True, 
         help="Path to directory with training images")
     
     parser.add_argument("--reg_data_root", 
@@ -589,9 +588,6 @@ if __name__ == "__main__":
         else:
             name = ""
 
-        if opt.datadir_in_name:
-            now = os.path.basename(os.path.normpath(opt.data_root)) + now
-            
         nowname = now + name + opt.postfix
         logdir = os.path.join(opt.logdir, nowname)
 
@@ -604,6 +600,7 @@ if __name__ == "__main__":
         configs = [OmegaConf.load(cfg) for cfg in opt.base]
         cli = OmegaConf.from_dotlist(unknown)
         config = OmegaConf.merge(*configs, cli)
+        print(config.data.params)
         lightning_config = config.pop("lightning", OmegaConf.create())
         # merge trainer cli with config
         trainer_config = lightning_config.get("trainer", OmegaConf.create())
@@ -764,7 +761,6 @@ if __name__ == "__main__":
 
         trainer = Trainer.from_argparse_args(trainer_opt, **trainer_kwargs)
         trainer.logdir = logdir  ###
-
         # data
         config.data.params.train.params.data_root = opt.data_root
         config.data.params.reg.params.data_root = opt.reg_data_root
@@ -848,5 +844,3 @@ if __name__ == "__main__":
             dst = os.path.join(dst, "debug_runs", name)
             os.makedirs(os.path.split(dst)[0], exist_ok=True)
             os.rename(logdir, dst)
-        if trainer.global_rank == 0:
-            print(trainer.profiler.summary())
